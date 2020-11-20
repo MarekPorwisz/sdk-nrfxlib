@@ -120,7 +120,7 @@ static void mutex_init_platform(nrf_cc3xx_platform_mutex_t *mutex)
  */
 static void mutex_free_platform(nrf_cc3xx_platform_mutex_t *mutex)
 {
-    SemaphoreHandle_t *p_mutex;
+    SemaphoreHandle_t p_mutex;
 
     /* Ensure that the mutex is valid (not NULL) */
     if (mutex == NULL) {
@@ -132,9 +132,9 @@ static void mutex_free_platform(nrf_cc3xx_platform_mutex_t *mutex)
         return;
     }
 
-    p_mutex = (SemaphoreHandle_t*) mutex->mutex;
+    p_mutex = (SemaphoreHandle_t) mutex->mutex;
 
-    vSemaphoreDelete(*p_mutex);
+    vSemaphoreDelete(p_mutex);
 
     /* Reset the mutex to invalid state */
     mutex->flags = NRF_CC3XX_PLATFORM_MUTEX_MASK_INVALID;
@@ -146,7 +146,7 @@ static void mutex_free_platform(nrf_cc3xx_platform_mutex_t *mutex)
 static int mutex_lock_platform(nrf_cc3xx_platform_mutex_t *mutex)
 {
     int ret;
-    SemaphoreHandle_t *p_mutex;
+    SemaphoreHandle_t p_mutex;
 
     /* Ensure that the mutex is valid (not NULL) */
     if (mutex == NULL) {
@@ -158,7 +158,7 @@ static int mutex_lock_platform(nrf_cc3xx_platform_mutex_t *mutex)
         return NRF_CC3XX_PLATFORM_ERROR_MUTEX_NOT_INITIALIZED;
     }
 
-    p_mutex = (SemaphoreHandle_t*) mutex->mutex;
+    p_mutex = (SemaphoreHandle_t) mutex->mutex;
 
     ret = xSemaphoreTake(p_mutex, portMAX_DELAY);
     if (ret == pdTRUE) {
@@ -175,7 +175,7 @@ static int mutex_lock_platform(nrf_cc3xx_platform_mutex_t *mutex)
 static int mutex_unlock_platform(nrf_cc3xx_platform_mutex_t * mutex)
 {
     int ret;
-    SemaphoreHandle_t *p_mutex;
+    SemaphoreHandle_t p_mutex;
 
     /* Ensure that the mutex is valid (not NULL) */
     if (mutex == NULL) {
@@ -187,7 +187,7 @@ static int mutex_unlock_platform(nrf_cc3xx_platform_mutex_t * mutex)
         return NRF_CC3XX_PLATFORM_ERROR_MUTEX_NOT_INITIALIZED;
     }
 
-    p_mutex = (SemaphoreHandle_t*) mutex->mutex;
+    p_mutex = (SemaphoreHandle_t) mutex->mutex;
 
     ret = xSemaphoreGive(p_mutex);
     if (ret != pdTRUE) {
