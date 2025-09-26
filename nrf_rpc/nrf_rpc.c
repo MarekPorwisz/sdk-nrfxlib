@@ -125,6 +125,7 @@ static uint8_t initialized_group_count;
 
 /* nRF RPC initialization status. */
 static bool is_initialized;
+static bool is_stopped;
 
 /* Error handler provided to the init function. */
 static nrf_rpc_err_handler_t global_err_handler;
@@ -738,6 +739,23 @@ static int init_packet_handle(struct header *hdr, const struct nrf_rpc_group **g
 	return 0;
 }
 
+static void abort_all_ops(void)
+{
+	NRF_RPC_WRN("Canceling all tasks.");
+	for (int i = 0; i < CONFIG_NRF_RPC_CMD_CTX_POOL_SIZE; i++) {
+		struct nrf_rpc_cmd_ctx *ctx = &cmd_ctx_pool[i];
+		NRF_RPC_WRN("context  %u, handler %p.", ctx->id, ctx->handler);
+		NRF_RPC_WRN("context  %u, use_ct %d.", ctx->id, ctx->use_count);
+		if (ctx->recv_msg.waiting > 0) {
+			nrf_rpc_os_mutex_lock(&ctx->mutex);
+			NRF_RPC_WRN("Canceling context %u.", ctx->id);
+			nrf_rpc_os_msg_set(&ctx->recv_msg, NULL, 0);
+			nrf_rpc_os_mutex_unlock(&ctx->mutex);
+		}
+	}
+	NRF_RPC_WRN("Canceling all tasks done.");
+}
+
 /* Callback from transport layer that handles incoming. */
 static void receive_handler(const struct nrf_rpc_tr *transport, const uint8_t *packet, size_t len,
 			    void *context)
@@ -754,11 +772,24 @@ static void receive_handler(const struct nrf_rpc_tr *transport, const uint8_t *p
 		goto cleanup_and_exit;
 	}
 
+	if (is_stopped &&
+	    (hdr.type == NRF_RPC_PACKET_TYPE_CMD ||
+	     hdr.type == NRF_RPC_PACKET_TYPE_EVT ||
+	     hdr.type == NRF_RPC_PACKET_TYPE_RSP)) {
+		// drop only selected types of packets
+		// do not drop ACKs INITs and ERRORS
+
+		NRF_RPC_WRN("Dropping the packet.");
+		goto cleanup_and_exit;
+	}
+
 	if (hdr.type == NRF_RPC_PACKET_TYPE_CMD ||
 	    hdr.type == NRF_RPC_PACKET_TYPE_EVT ||
 	    hdr.type == NRF_RPC_PACKET_TYPE_ACK ||
 	    hdr.type == NRF_RPC_PACKET_TYPE_RSP ||
 	    hdr.type == NRF_RPC_PACKET_TYPE_ERR) {
+
+
 
 		group = group_from_id(hdr.dst_group_id);
 		if (group == NULL) {
@@ -986,6 +1017,10 @@ int nrf_rpc_cmd_common(const struct nrf_rpc_group *group, uint32_t cmd,
 		handler_data = ptr2;
 	}
 
+	if (is_stopped) {
+		return -NRF_EPERM;
+	}
+
 	cmd_ctx = cmd_ctx_reserve();
 
 	hdr.dst = cmd_ctx->remote_id;
@@ -1192,6 +1227,17 @@ int nrf_rpc_init(nrf_rpc_err_handler_t err_handler)
 	NRF_RPC_DBG("Done initializing nRF RPC module");
 
 	return err;
+}
+
+void nrf_rpc_stop(void)
+{
+	is_stopped = true;
+	abort_all_ops();
+}
+
+void nrf_rpc_resume(void)
+{
+	is_stopped = false;
 }
 
 int nrf_rpc_cmd(const struct nrf_rpc_group *group, uint8_t cmd, uint8_t *packet,

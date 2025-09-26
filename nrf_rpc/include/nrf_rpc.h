@@ -357,6 +357,23 @@ void nrf_rpc_set_bound_handler(nrf_rpc_group_bound_handler_t bound_handler);
  */
 int nrf_rpc_init(nrf_rpc_err_handler_t err_handler);
 
+
+/** @brief Temporairly suspend all RPC communication
+ *
+ * Calling this function automatically fails all communication until @ref nrf_rpc_resume is called.
+ * It also causes all pending request to fail immediately.
+ *
+ */
+void nrf_rpc_stop(void);
+
+/** @brief resumes RPC communication
+ *
+ * Calling this function reverts the effects of @ref nrf_rpc_stop.
+ *
+ */
+void nrf_rpc_resume(void);
+
+
 /** @brief Send a command and provide callback to handle response.
  *
  * @param group        Group that command belongs to.
