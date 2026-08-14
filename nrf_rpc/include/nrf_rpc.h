@@ -445,7 +445,7 @@ void nrf_rpc_register_cleanup_handler(struct nrf_rpc_cleanup_handler *handler);
  *       @ref nrf_rpc_resume.
  *
  */
-void nrf_rpc_stop(bool cleanup);
+int nrf_rpc_stop(bool cleanup);
 
 /** @brief resumes RPC communication
  *
